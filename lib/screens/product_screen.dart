@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-
-import '../models/machine_state.dart';
 import '../services/vending_machine_service.dart';
 import '../widgets/product_card.dart';
 
