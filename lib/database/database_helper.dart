@@ -10,7 +10,7 @@ import 'tables/coins_table.dart';
 class DatabaseHelper {
   static final DatabaseHelper _instance = DatabaseHelper._internal();
 
-  late Database _database;
+  Database? _database;
 
   factory DatabaseHelper() {
     return _instance;
@@ -19,8 +19,8 @@ class DatabaseHelper {
   DatabaseHelper._internal();
 
   Future<Database> get database async {
-    _database = await _initDatabase();
-    return _database;
+    _database ??= await _initDatabase();
+    return _database!;
   }
 
   Future<Database> _initDatabase() async {
@@ -50,6 +50,6 @@ class DatabaseHelper {
   }
 
   Future<void> close() async {
-    _database.close();
+    _database!.close();
   }
 }
