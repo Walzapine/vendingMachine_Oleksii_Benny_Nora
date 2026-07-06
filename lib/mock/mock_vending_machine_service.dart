@@ -3,6 +3,7 @@ import '../models/product.dart';
 import '../models/purchase_result.dart';
 import '../services/vending_machine_service.dart';
 import 'mock_products.dart';
+import '../logic/purchase_logic.dart';
 
 /// In-Memory-Implementierung der Automatenlogik für Entwicklung und Tests.
 ///
@@ -30,6 +31,10 @@ class MockVendingMachineService extends VendingMachineService {
   final List<Product> _products;
 
   /// Internes Guthaben in Cent. Geldwerte werden nie als `double` berechnet.
+  ///
+  /// Wichtig: Nach einem erfolgreichen Kauf wird dieser Wert NICHT auf 0
+  /// gesetzt, sondern auf das Rückgeld reduziert. Er repräsentiert also immer
+  /// den kompletten Betrag, den der Kunde gerade "im Automaten stehen" hat.
   int _creditInCents = 0;
 
   /// ID des aktuell gewählten Produkts; `null` bedeutet keine Auswahl.
@@ -37,6 +42,13 @@ class MockVendingMachineService extends VendingMachineService {
 
   /// Text, der unter dem Ausgabefach angezeigt wird.
   String _statusMessage = 'Bereit. Bitte Produkt auswählen.';
+
+  /// Produkt, das aktuell physisch im Ausgabefach liegt.
+  ///
+  /// `null` bedeutet: Fach ist leer. Wird bei einem erfolgreichen Kauf
+  /// gesetzt und erst in [collectProduct] wieder auf `null` zurückgesetzt.
+  /// Unabhängig vom Guthaben - beide werden getrennt entnommen.
+  Product? _dispensedProduct;
 
   /// Baut bei jedem Zugriff einen unveränderlichen Zustand für das Frontend.
   ///
@@ -48,6 +60,7 @@ class MockVendingMachineService extends VendingMachineService {
     creditInCents: _creditInCents,
     selectedProductId: _selectedProductId,
     statusMessage: _statusMessage,
+    dispensedProduct: _dispensedProduct,
   );
 
   /// Erhöht das Guthaben und informiert die UI über den neuen Zustand.
@@ -74,67 +87,89 @@ class MockVendingMachineService extends VendingMachineService {
     notifyListeners();
   }
 
-  /// Führt die vollständige Demo-Kaufprüfung in definierter Reihenfolge aus.
+  /// Führt einen Kaufversuch für das aktuell ausgewählte Produkt aus.
   ///
-  /// Reihenfolge:
+  /// Die eigentliche fachliche Prüfung (Ausgabefach frei? Auswahl vorhanden?
+  /// vorrätig? Guthaben ausreichend?) übernimmt komplett
+  /// [PurchaseLogic.evaluatePurchase]. Diese Methode hier ist bewusst schlank
+  /// gehalten und kümmert sich nur noch um zwei Dinge, die spezifisch für
+  /// DIESE Implementierung sind:
   ///
-  /// 1. Existiert eine Produktauswahl?
-  /// 2. Ist das Produkt noch vorrätig?
-  /// 3. Reicht das eingeworfene Guthaben?
-  /// 4. Bestand um eins reduzieren.
-  /// 5. Rückgeld berechnen, Guthaben und Auswahl zurücksetzen.
-  /// 6. UI benachrichtigen und [PurchaseResult] zurückgeben.
+  /// 1. Das Ergebnis der Prüfung in den eigenen Arbeitsspeicher übernehmen
+  ///    (Produktliste, Ausgabefach, Guthaben, Auswahl aktualisieren).
+  /// 2. Die UI über `notifyListeners()` benachrichtigen.
   ///
-  /// In einem echten Backend sollten Bestandsprüfung und Bestandsänderung
-  /// atomar erfolgen, damit nicht zwei gleichzeitige Käufe dasselbe letzte
-  /// Produkt erhalten.
+  /// Eine spätere SQLite- oder API-Implementierung würde exakt dieselbe
+  /// `PurchaseLogic.evaluatePurchase(...)`-Prüfung aufrufen, im Erfolgsfall
+  /// aber z. B. einen `UPDATE`-Befehl an die Datenbank schicken statt die
+  /// Liste im RAM zu verändern.
   @override
   Future<PurchaseResult> purchase() async {
-    final selectedId = _selectedProductId;
-    if (selectedId == null) {
-      return const PurchaseResult(
-        status: PurchaseStatus.noSelection,
-        message: 'Bitte zuerst ein Produkt auswählen.',
-      );
+    // Die reine Prüfung: bekommt den aktuellen Zustand als einfache Werte
+    // übergeben und liefert zurück, ob und wie der Kauf ausgeführt werden
+    // darf. Wichtig: An dieser Stelle wurde noch NICHTS verändert.
+    final attempt = PurchaseLogic.evaluatePurchase(
+      products: _products,
+      selectedProductId: _selectedProductId,
+      creditInCents: _creditInCents,
+      // Nur ein unabgeholtes PRODUKT blockiert einen neuen Kauf. Übriges
+      // Guthaben tut das nicht mehr - der Kunde darf es jederzeit für den
+      // nächsten Kauf weiterverwenden oder sich auszahlen lassen.
+      trayOccupied: _dispensedProduct != null,
+    );
+
+    // Nur bei Erfolg wird der interne Zustand tatsächlich übernommen. Bei
+    // einem Fehlschlag (z. B. ausverkauft) bleiben Guthaben und Auswahl
+    // unverändert, damit der Kunde es erneut versuchen kann.
+    if (attempt.isSuccess) {
+      // Das alte Produkt an der ermittelten Position durch die Kopie mit
+      // reduziertem Bestand ersetzen.
+      _products[attempt.productIndex!] = attempt.updatedProduct!;
+
+      // Das Produkt wandert physisch ins Ausgabefach.
+      _dispensedProduct = attempt.updatedProduct;
+
+      // WICHTIG: Guthaben wird NICHT auf 0 gesetzt, sondern auf den
+      // Restbetrag (das Rückgeld). Dadurch zeigt "Guthaben" oben in der UI
+      // automatisch den Restwert an, ganz ohne ein zweites Datenfeld.
+      _creditInCents = attempt.changeInCents;
+
+      _selectedProductId = null;
     }
 
-    final index = _products.indexWhere((item) => item.id == selectedId);
-    final product = _products[index];
-    if (product.stock <= 0) {
-      return const PurchaseResult(
-        status: PurchaseStatus.outOfStock,
-        message: 'Dieses Produkt ist ausverkauft.',
-      );
-    }
-    if (_creditInCents < product.priceInCents) {
-      return const PurchaseResult(
-        status: PurchaseStatus.insufficientCredit,
-        message: 'Das Guthaben reicht nicht aus.',
-      );
-    }
+    // Die Statusmeldung kommt in beiden Fällen (Erfolg oder Fehlschlag)
+    // direkt aus der Prüfung, damit UI und Logik immer denselben Text zeigen.
+    _statusMessage = attempt.message;
 
-    // Rückgeld wird vor dem Zurücksetzen des Guthabens berechnet.
-    final change = _creditInCents - product.priceInCents;
-
-    // Da Product unveränderlich ist, ersetzen wir den Listeneintrag durch eine
-    // Kopie mit reduziertem Bestand.
-    _products[index] = product.copyWith(stock: product.stock - 1);
-    _creditInCents = 0;
-    _selectedProductId = null;
-    _statusMessage = '${product.name} liegt im Ausgabefach.';
+    // Pflicht laut VendingMachineService-Vertrag: nach jeder sichtbaren
+    // Änderung müssen Listener (hier: der AnimatedBuilder im ProductScreen)
+    // informiert werden, damit die UI sich automatisch neu aufbaut.
     notifyListeners();
 
-    return PurchaseResult(
-      status: PurchaseStatus.success,
-      message: _statusMessage,
-      changeInCents: change,
-    );
+    // Die UI kennt nur PurchaseResult, nicht die internen Details wie
+    // productIndex oder updatedProduct – deshalb hier die Umwandlung.
+    return attempt.toPurchaseResult();
   }
 
-  /// Bricht den aktuellen Vorgang ab und gibt das komplette Guthaben zurück.
+  /// Entfernt das Produkt aus dem Ausgabefach.
   ///
-  /// Der Rückgabewert ist der Betrag vor dem Zurücksetzen. Die UI kann ihn für
-  /// eine Rückgabemeldung verwenden.
+  /// Betrifft ausschließlich [_dispensedProduct]. Das Guthaben bleibt davon
+  /// komplett unberührt - für dessen Entnahme ist [returnMoney] zuständig.
+  /// Ist das Fach schon leer, passiert einfach nichts Sichtbares.
+  @override
+  void collectProduct() {
+    _dispensedProduct = null;
+    _statusMessage = 'Bereit. Bitte Produkt auswählen.';
+    notifyListeners();
+  }
+
+  /// Setzt das Guthaben auf 0 zurück und liefert den Betrag, der ausgezahlt
+  /// wurde.
+  ///
+  /// Wird sowohl vom RÜCKGABE-Button als auch von einem Klick auf das
+  /// Rückgeld-Fach in der UI aufgerufen. Betrifft ausschließlich das
+  /// Guthaben - ein eventuell noch nicht abgeholtes Produkt im Ausgabefach
+  /// bleibt davon unberührt.
   @override
   int returnMoney() {
     final returnedMoney = _creditInCents;
