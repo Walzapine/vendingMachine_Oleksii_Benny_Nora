@@ -175,13 +175,46 @@ class _ProductArea extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 10),
-        Container(
-          // Dies ist zunächst nur die visuelle Position des Ausgabefachs. Eine
-          // spätere Animation kann hier ergänzt werden, ohne Kaufcode einzubauen.
-          height: 58,
-          alignment: Alignment.center,
-          color: Colors.grey.shade300,
-          child: const Text('AUSGABEFACH'),
+        Row(
+          children: [
+            // Produkt-Fach (links): zeigt entweder den leeren Platzhalter
+            // oder, sobald ein Kauf erfolgreich war, das liegende Produkt.
+            // Ein Klick ruft service.collectProduct() auf und leert NUR
+            // dieses Fach - das Guthaben bleibt davon unberührt.
+            Expanded(
+              child: _TrayButton(
+                isFilled: state.trayHasProduct,
+                filledColor: Colors.green.shade100,
+                emptyColor: Colors.grey.shade300,
+                label: state.trayHasProduct
+                    ? '${state.dispensedProduct?.emoji ?? ''} '
+                          '${state.dispensedProduct?.name ?? ''}'
+                          ' – antippen'
+                    : 'AUSGABEFACH',
+                onTap: state.trayHasProduct
+                    ? () => service.collectProduct()
+                    : null,
+              ),
+            ),
+            const SizedBox(width: 8),
+            // Rückgeld-Fach (rechts): zeigt das aktuelle Guthaben, sobald es
+            // größer als 0 ist - egal ob frisch eingeworfen oder Rückgeld aus
+            // einem Kauf. Ein Klick ruft dieselbe returnMoney()-Logik auf wie
+            // der RÜCKGABE-Button, nur eben als Fach statt als Button.
+            Expanded(
+              child: _TrayButton(
+                isFilled: state.hasChangeToCollect,
+                filledColor: Colors.amber.shade100,
+                emptyColor: Colors.grey.shade300,
+                label: state.hasChangeToCollect
+                    ? '🪙 ${state.formattedCredit} – antippen'
+                    : 'RÜCKGELD',
+                onTap: state.hasChangeToCollect
+                    ? () => service.returnMoney()
+                    : null,
+              ),
+            ),
+          ],
         ),
         const SizedBox(height: 8),
         Container(
@@ -194,6 +227,63 @@ class _ProductArea extends StatelessWidget {
           child: Text(state.statusMessage),
         ),
       ],
+    );
+  }
+}
+
+/// Ein einzelnes, antippbares Fach (Produkt- oder Rückgeld-Fach).
+///
+/// Beide Fächer sehen gleich aus und verhalten sich gleich (gefüllt = bunt
+/// und antippbar, leer = grau und nicht antippbar), unterscheiden sich nur in
+/// Inhalt und Aktion. Deshalb dieses eine gemeinsame Widget statt Duplikat.
+class _TrayButton extends StatelessWidget {
+  const _TrayButton({
+    required this.isFilled,
+    required this.filledColor,
+    required this.emptyColor,
+    required this.label,
+    required this.onTap,
+  });
+
+  /// Ob gerade etwas im Fach liegt (Produkt bzw. abholbares Guthaben).
+  final bool isFilled;
+
+  /// Hintergrundfarbe, wenn das Fach gefüllt ist.
+  final Color filledColor;
+
+  /// Hintergrundfarbe, wenn das Fach leer ist.
+  final Color emptyColor;
+
+  /// Anzuzeigender Text.
+  final String label;
+
+  /// Aktion bei Klick. `null`, wenn das Fach leer ist - dadurch reagiert
+  /// InkWell gar nicht erst auf Taps und braucht keine eigene Prüfung.
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 58,
+      child: Material(
+        color: isFilled ? filledColor : emptyColor,
+        borderRadius: BorderRadius.circular(8),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(8),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            child: Center(
+              child: Text(
+                label,
+                textAlign: TextAlign.center,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
