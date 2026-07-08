@@ -32,10 +32,34 @@ abstract class VendingMachineService extends ChangeNotifier {
   /// Versucht, das ausgewählte Produkt mit dem Guthaben zu kaufen.
   ///
   /// Die Methode ist asynchron, damit später Datenbankzugriffe oder API-Aufrufe
-  /// möglich sind. Ein erfolgreicher Kauf sollte mindestens Bestand und
-  /// Guthaben aktualisieren, die Auswahl zurücksetzen und Listener informieren.
+  /// möglich sind.
+  ///
+  /// Bei Erfolg passiert Folgendes:
+  ///
+  /// * Das Produkt landet im Ausgabefach (siehe [MachineState.dispensedProduct])
+  ///   und muss über [collectProduct] separat abgeholt werden.
+  /// * Das Guthaben wird NICHT auf 0 gesetzt, sondern auf den Restbetrag
+  ///   (das Rückgeld) reduziert. Der Kunde kann diesen Restbetrag entweder für
+  ///   den nächsten Kauf verwenden oder über [returnMoney] auszahlen lassen.
+  ///
+  /// Liegt noch ein unabgeholtes Produkt im Fach, sollte die Implementierung
+  /// einen weiteren Kauf mit [PurchaseStatus.trayOccupied] ablehnen.
   Future<PurchaseResult> purchase();
 
-  /// Setzt Guthaben und Auswahl zurück und liefert den Rückgabebetrag in Cent.
+  /// Setzt das Guthaben auf 0 zurück und liefert den ausgezahlten Betrag in
+  /// Cent zurück.
+  ///
+  /// Wird sowohl vom RÜCKGABE-Button als auch von einem Klick auf das
+  /// Rückgeld-Fach in der UI aufgerufen - beides bedeutet fachlich dasselbe:
+  /// der Kunde nimmt sein aktuelles Guthaben als Münzen mit.
   int returnMoney();
+
+  /// Entfernt das Produkt aus dem Ausgabefach.
+  ///
+  /// Wird aufgerufen, wenn der Kunde in der UI auf das Ausgabefach klickt.
+  /// Betrifft ausschließlich [MachineState.dispensedProduct] - das Guthaben
+  /// bleibt davon komplett unberührt, da beide Fächer unabhängig voneinander
+  /// entnommen werden können. Die Implementierung muss anschließend
+  /// `notifyListeners()` aufrufen.
+  void collectProduct();
 }
