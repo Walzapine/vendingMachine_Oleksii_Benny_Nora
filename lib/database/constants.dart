@@ -6,6 +6,7 @@ class DatabaseConstants {
   static const String columnProductName = 'name';
   static const String columnProductPrice = 'price';
   static const String columnProductStock = 'stock';
+  static const String columnProductEmoji = 'emoji';
 
   // Coins table
   static const String tableCoins = 'coins';
