@@ -1,9 +1,12 @@
+import '../models/coin.dart';
 import '../models/machine_state.dart';
 import '../models/product.dart';
 import '../models/purchase_result.dart';
 import '../services/vending_machine_service.dart';
 import 'mock_products.dart';
+import 'mock_coins.dart';
 import '../logic/purchase_logic.dart';
+import '../logic/coin_logic.dart';
 
 /// In-Memory-Implementierung der Automatenlogik für Entwicklung und Tests.
 ///
@@ -22,13 +25,17 @@ class MockVendingMachineService extends VendingMachineService {
   /// Erstellt eine veränderbare Arbeitskopie der konstanten Beispieldaten.
   ///
   /// Ohne Kopien würden mehrere Tests oder Serviceinstanzen dieselben Objekte
-  /// teilen. Die Produkte selbst bleiben unveränderlich; Änderungen erfolgen
-  /// später durch [Product.copyWith].
+  /// teilen. Produkte und Münzen selbst bleiben unveränderlich; Änderungen
+  /// erfolgen später über die jeweiligen `copyWith`-Methoden.
   MockVendingMachineService()
-    : _products = mockProducts.map((product) => product.copyWith()).toList();
+    : _products = mockProducts.map((product) => product.copyWith()).toList(),
+      _coins = mockCoins.map((coin) => coin.copyWith()).toList();
 
   /// Interne, veränderbare Produktliste. Sie darf nicht direkt an die UI gehen.
   final List<Product> _products;
+
+  /// Interne, veränderbare Münzliste für den Adminbereich.
+  final List<Coin> _coins;
 
   /// Internes Guthaben in Cent. Geldwerte werden nie als `double` berechnet.
   ///
@@ -38,7 +45,8 @@ class MockVendingMachineService extends VendingMachineService {
   int _creditInCents = 0;
 
   /// ID des aktuell gewählten Produkts; `null` bedeutet keine Auswahl.
-  String? _selectedProductId;
+  /// Entspricht [Product.id] (int).
+  int? _selectedProductId;
 
   /// Text, der unter dem Ausgabefach angezeigt wird.
   String _statusMessage = 'Bereit. Bitte Produkt auswählen.';
@@ -74,17 +82,21 @@ class MockVendingMachineService extends VendingMachineService {
     notifyListeners();
   }
 
-  /// Sucht ein Produkt über seine Fachnummer und merkt seine technische ID.
+  /// Wählt das Produkt mit der ID [productId] aus.
   ///
-  /// Nach der Auswahl werden Statuszeile und Tastenmarkierung aktualisiert.
-  /// Die echte Implementierung sollte unbekannte Fachnummern kontrolliert
-  /// behandeln; `firstWhere` reicht hier für die festen Mockdaten aus.
+  /// Vorher hieß diese Methode `selectProductBySlot(String slotCode)` - da
+  /// das Product-Modell inzwischen kein `slotCode`-Feld mehr hat, läuft die
+  /// Auswahl jetzt direkt über die technische ID.
+  ///
+  /// `firstWhere` wirft eine Exception, wenn die ID nicht existiert. Für die
+  /// festen Mockdaten ist das ausreichend; eine echte Implementierung sollte
+  /// das kontrollierter abfangen (z. B. mit `firstWhereOrNull`).
   @override
-  void selectProductBySlot(int productID) {
-    // final product = _products.firstWhere((item) => item.id == productID);
-    // _selectedProductId = product.id;
-    // _statusMessage = '${product.name} ausgewählt.';
-    // notifyListeners();
+  void selectProduct(int productId) {
+    final product = _products.firstWhere((item) => item.id == productId);
+    _selectedProductId = product.id;
+    _statusMessage = '${product.name} ausgewählt.';
+    notifyListeners();
   }
 
   /// Führt einen Kaufversuch für das aktuell ausgewählte Produkt aus.
@@ -98,56 +110,25 @@ class MockVendingMachineService extends VendingMachineService {
   /// 1. Das Ergebnis der Prüfung in den eigenen Arbeitsspeicher übernehmen
   ///    (Produktliste, Ausgabefach, Guthaben, Auswahl aktualisieren).
   /// 2. Die UI über `notifyListeners()` benachrichtigen.
-  ///
-  /// Eine spätere SQLite- oder API-Implementierung würde exakt dieselbe
-  /// `PurchaseLogic.evaluatePurchase(...)`-Prüfung aufrufen, im Erfolgsfall
-  /// aber z. B. einen `UPDATE`-Befehl an die Datenbank schicken statt die
-  /// Liste im RAM zu verändern.
   @override
   Future<PurchaseResult> purchase() async {
-    // Die reine Prüfung: bekommt den aktuellen Zustand als einfache Werte
-    // übergeben und liefert zurück, ob und wie der Kauf ausgeführt werden
-    // darf. Wichtig: An dieser Stelle wurde noch NICHTS verändert.
     final attempt = PurchaseLogic.evaluatePurchase(
       products: _products,
       selectedProductId: _selectedProductId,
       creditInCents: _creditInCents,
-      // Nur ein unabgeholtes PRODUKT blockiert einen neuen Kauf. Übriges
-      // Guthaben tut das nicht mehr - der Kunde darf es jederzeit für den
-      // nächsten Kauf weiterverwenden oder sich auszahlen lassen.
       trayOccupied: _dispensedProduct != null,
     );
 
-    // Nur bei Erfolg wird der interne Zustand tatsächlich übernommen. Bei
-    // einem Fehlschlag (z. B. ausverkauft) bleiben Guthaben und Auswahl
-    // unverändert, damit der Kunde es erneut versuchen kann.
     if (attempt.isSuccess) {
-      // Das alte Produkt an der ermittelten Position durch die Kopie mit
-      // reduziertem Bestand ersetzen.
       _products[attempt.productIndex!] = attempt.updatedProduct!;
-
-      // Das Produkt wandert physisch ins Ausgabefach.
       _dispensedProduct = attempt.updatedProduct;
-
-      // WICHTIG: Guthaben wird NICHT auf 0 gesetzt, sondern auf den
-      // Restbetrag (das Rückgeld). Dadurch zeigt "Guthaben" oben in der UI
-      // automatisch den Restwert an, ganz ohne ein zweites Datenfeld.
       _creditInCents = attempt.changeInCents;
-
       _selectedProductId = null;
     }
 
-    // Die Statusmeldung kommt in beiden Fällen (Erfolg oder Fehlschlag)
-    // direkt aus der Prüfung, damit UI und Logik immer denselben Text zeigen.
     _statusMessage = attempt.message;
-
-    // Pflicht laut VendingMachineService-Vertrag: nach jeder sichtbaren
-    // Änderung müssen Listener (hier: der AnimatedBuilder im ProductScreen)
-    // informiert werden, damit die UI sich automatisch neu aufbaut.
     notifyListeners();
 
-    // Die UI kennt nur PurchaseResult, nicht die internen Details wie
-    // productIndex oder updatedProduct – deshalb hier die Umwandlung.
     return attempt.toPurchaseResult();
   }
 
@@ -155,7 +136,6 @@ class MockVendingMachineService extends VendingMachineService {
   ///
   /// Betrifft ausschließlich [_dispensedProduct]. Das Guthaben bleibt davon
   /// komplett unberührt - für dessen Entnahme ist [returnMoney] zuständig.
-  /// Ist das Fach schon leer, passiert einfach nichts Sichtbares.
   @override
   void collectProduct() {
     _dispensedProduct = null;
@@ -165,11 +145,6 @@ class MockVendingMachineService extends VendingMachineService {
 
   /// Setzt das Guthaben auf 0 zurück und liefert den Betrag, der ausgezahlt
   /// wurde.
-  ///
-  /// Wird sowohl vom RÜCKGABE-Button als auch von einem Klick auf das
-  /// Rückgeld-Fach in der UI aufgerufen. Betrifft ausschließlich das
-  /// Guthaben - ein eventuell noch nicht abgeholtes Produkt im Ausgabefach
-  /// bleibt davon unberührt.
   @override
   int returnMoney() {
     final returnedMoney = _creditInCents;
@@ -178,5 +153,36 @@ class MockVendingMachineService extends VendingMachineService {
     _statusMessage = 'Geld wurde zurückgegeben.';
     notifyListeners();
     return returnedMoney;
+  }
+
+  // ---------------------------------------------------------------------
+  // Adminbereich (Münzbestand, gemeinsames Coin-Modell)
+  // ---------------------------------------------------------------------
+
+  @override
+  List<Coin> get coins => List.unmodifiable(_coins);
+
+  /// Erhöht den Bestand einer Münze um 1.
+  ///
+  /// Die eigentliche Berechnung übernimmt [CoinLogic.increase]. Diese
+  /// Methode übernimmt nur das Ergebnis in den eigenen Arbeitsspeicher und
+  /// benachrichtigt die UI - exakt dasselbe Muster wie bei [purchase].
+  @override
+  void increaseCoinQuantity(int coinId) {
+    final adjustment = CoinLogic.increase(coins: _coins, coinId: coinId);
+    if (adjustment.isSuccess) {
+      _coins[adjustment.coinIndex] = adjustment.updatedCoin;
+      notifyListeners();
+    }
+  }
+
+  /// Verringert den Bestand einer Münze um 1, sofern möglich.
+  @override
+  void decreaseCoinQuantity(int coinId) {
+    final adjustment = CoinLogic.decrease(coins: _coins, coinId: coinId);
+    if (adjustment.isSuccess) {
+      _coins[adjustment.coinIndex] = adjustment.updatedCoin;
+      notifyListeners();
+    }
   }
 }

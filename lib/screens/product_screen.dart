@@ -168,7 +168,7 @@ class _ProductArea extends StatelessWidget {
                 slotCode: "A1",
                 // Die Karte meldet nur die Fachnummer. Suchen, Validieren und
                 // Speichern der Auswahl übernimmt der Service.
-                onTap: () => service.selectProductBySlot(product.id),
+                onTap: () => service.selectProduct(product.id),
               );
             },
           ),
@@ -389,7 +389,7 @@ class _ControlPanel extends StatelessWidget {
                   // markiert genau eine aktuell gewählte Fachnummer.
                   final selected = state.selectedProductId == product.id;
                   return OutlinedButton(
-                    onPressed: () => service.selectProductBySlot(product.id),
+                    onPressed: () => service.selectProduct(product.id),
                     style: OutlinedButton.styleFrom(
                       padding: EdgeInsets.zero,
                       backgroundColor: selected

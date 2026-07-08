@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 
+import '../models/coin.dart';
 import '../models/machine_state.dart';
 import '../models/purchase_result.dart';
 
@@ -23,11 +24,15 @@ abstract class VendingMachineService extends ChangeNotifier {
   /// werden. Negative Werte dürfen nicht angenommen werden.
   void insertMoney(int cents);
 
-  /// Wählt das Produkt mit der sichtbaren Fachnummer [slotCode] aus.
+  /// Wählt das Produkt mit der ID [productId] aus.
   ///
-  /// Bei einer unbekannten Fachnummer sollte die echte Implementierung einen
+  /// Hinweis: Hieß früher `selectProductBySlot(String slotCode)` - da das
+  /// Product-Modell kein `slotCode`-Feld mehr hat, wird jetzt direkt über die
+  /// technische ID ausgewählt (entspricht [Product.id]).
+  ///
+  /// Bei einer unbekannten ID sollte die echte Implementierung einen
   /// kontrollierten Fehlerstatus setzen, statt unkontrolliert abzustürzen.
-  void selectProductBySlot(int productId);
+  void selectProduct(int productId);
 
   /// Versucht, das ausgewählte Produkt mit dem Guthaben zu kaufen.
   ///
@@ -62,4 +67,29 @@ abstract class VendingMachineService extends ChangeNotifier {
   /// entnommen werden können. Die Implementierung muss anschließend
   /// `notifyListeners()` aufrufen.
   void collectProduct();
+
+  // ---------------------------------------------------------------------
+  // Ab hier: Adminbereich (Münzbestand). Diese Methoden gehören fachlich
+  // zum "Backoffice" des Automaten, nicht zum normalen Kundenbetrieb, und
+  // werden deshalb bewusst nicht in MachineState mitgeführt.
+  // ---------------------------------------------------------------------
+
+  /// Liefert einen aktuellen, nur lesbaren Schnappschuss aller Münzsorten
+  /// samt Bestand. Wird vom Adminbereich benötigt, um für jede Münzsorte die
+  /// aktuelle Stückzahl neben den +/- Buttons anzuzeigen.
+  List<Coin> get coins;
+
+  /// Erhöht den Bestand der Münze mit der ID [coinId] um 1.
+  ///
+  /// [coinId] entspricht [Coin.id] (nicht dem Geldwert). Wird vom "+"-Button
+  /// im Adminbereich aufgerufen. Die Implementierung muss anschließend
+  /// `notifyListeners()` aufrufen.
+  void increaseCoinQuantity(int coinId);
+
+  /// Verringert den Bestand der Münze mit der ID [coinId] um 1, sofern dieser
+  /// bereits größer als 0 ist.
+  ///
+  /// Wird vom "-"-Button im Adminbereich aufgerufen. Die Implementierung muss
+  /// anschließend `notifyListeners()` aufrufen.
+  void decreaseCoinQuantity(int coinId);
 }

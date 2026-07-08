@@ -15,7 +15,7 @@ void main() {
 
     // Act: Fach A1 kostet 180 Cent. Mit 200 Cent müssen 20 Cent Rückgeld
     // entstehen und der Bestand muss um genau ein Stück sinken.
-    service.selectProductBySlot(1);
+    service.selectProduct(1);
     service.insertMoney(200);
     final result = await service.purchase();
 
@@ -23,7 +23,10 @@ void main() {
     // erkennt der Test auch unvollständige Kaufimplementierungen.
     expect(result.status, PurchaseStatus.success);
     expect(result.changeInCents, 20);
-    expect(service.state.creditInCents, 0);
+    // Guthaben wird nach einem Kauf NICHT mehr auf 0 gesetzt, sondern zeigt
+    // den Restbetrag (das Rückgeld) - siehe Kommentare in
+    // mock_vending_machine_service.dart / machine_state.dart.
+    expect(service.state.creditInCents, 20);
     expect(service.state.products.first.stock, 7);
   });
 }

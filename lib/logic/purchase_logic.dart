@@ -58,7 +58,7 @@ class PurchaseLogic {
   /// zweiten Kauf "überschrieben" wird, bevor der Kunde es entnommen hat.
   static PurchaseAttempt evaluatePurchase({
     required List<Product> products,
-    required String? selectedProductId,
+    required int? selectedProductId,
     required int creditInCents,
     bool trayOccupied = false,
   }) {
@@ -95,6 +95,11 @@ class PurchaseLogic {
     }
 
     final product = products[index];
+    // TODO(Team): product.price ist aktuell ein double (Cent-Wert als
+    // Kommazahl), nicht mehr ein int wie priceInCents vorher. .toInt() rundet
+    // ab und funktioniert nur, solange nie ein krummer Wert wie 1.99
+    // reinkommt. Muss noch im Team geklärt werden (siehe Absprache mit
+    // DB-Kollege), bewusst noch nicht verändert.
     final productPriceInCents = product.price.toInt();
 
     // Schritt 3: Bestandsprüfung. `stock` wird nie negativ, aber `<= 0` ist
