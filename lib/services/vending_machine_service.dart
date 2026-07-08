@@ -27,7 +27,7 @@ abstract class VendingMachineService extends ChangeNotifier {
   ///
   /// Bei einer unbekannten Fachnummer sollte die echte Implementierung einen
   /// kontrollierten Fehlerstatus setzen, statt unkontrolliert abzustürzen.
-  void selectProductBySlot(String slotCode);
+  void selectProductBySlot(int productId);
 
   /// Versucht, das ausgewählte Produkt mit dem Guthaben zu kaufen.
   ///
