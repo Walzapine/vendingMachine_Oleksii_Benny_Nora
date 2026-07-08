@@ -15,7 +15,7 @@ void main() {
 
     // Act: Fach A1 kostet 180 Cent. Mit 200 Cent müssen 20 Cent Rückgeld
     // entstehen und der Bestand muss um genau ein Stück sinken.
-    service.selectProductBySlot('A1');
+    service.selectProductBySlot(1);
     service.insertMoney(200);
     final result = await service.purchase();
 

@@ -95,6 +95,7 @@ class PurchaseLogic {
     }
 
     final product = products[index];
+    final productPriceInCents = product.price.toInt();
 
     // Schritt 3: Bestandsprüfung. `stock` wird nie negativ, aber `<= 0` ist
     // trotzdem robuster als `== 0`, falls doch einmal ein fehlerhafter Wert
@@ -109,7 +110,7 @@ class PurchaseLogic {
     // Schritt 4: Guthabenprüfung. Der Vergleich erfolgt ausschließlich mit
     // ganzen Centbeträgen (int), nie mit `double`, um Rundungsfehler bei
     // Geldbeträgen zu vermeiden.
-    if (creditInCents < product.priceInCents) {
+    if (creditInCents < productPriceInCents) {
       return const PurchaseAttempt.failure(
         status: PurchaseStatus.insufficientCredit,
         message: 'Das Guthaben reicht nicht aus.',
@@ -118,7 +119,7 @@ class PurchaseLogic {
 
     // Schritt 5: Alle Prüfungen bestanden – Kauf ist gültig.
     // Rückgeld = eingeworfenes Guthaben minus Produktpreis.
-    final change = creditInCents - product.priceInCents;
+    final change = creditInCents - productPriceInCents;
 
     // Da `Product` unveränderlich (immutable) ist, kann der Bestand nicht
     // direkt verringert werden. Stattdessen entsteht über `copyWith` eine neue

@@ -49,7 +49,7 @@ class ProductCard extends StatelessWidget {
                 // vorläufige Emoji. Spätere Produktbilder passen an diese Stelle.
                 child: Center(
                   child: Text(
-                    product.emoji,
+                    "Asset für product ${product.name}",
                     style: const TextStyle(fontSize: 36),
                   ),
                 ),
@@ -58,7 +58,7 @@ class ProductCard extends StatelessWidget {
               Text(
                 // Preis und Ausverkauft-Hinweis teilen denselben festen Bereich,
                 // damit alle Karten gleich hoch bleiben.
-                isAvailable ? product.formattedPrice : 'Ausverkauft',
+                isAvailable ? product.price.toString() : 'Ausverkauft',
                 style: TextStyle(
                   color: isAvailable ? null : Colors.red,
                   fontWeight: FontWeight.bold,

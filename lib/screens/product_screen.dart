@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:snackautomat/models/machine_state.dart';
 import '../services/vending_machine_service.dart';
 import '../widgets/product_card.dart';
 
@@ -164,10 +165,10 @@ class _ProductArea extends StatelessWidget {
               final product = state.products[index];
               return ProductCard(
                 product: product,
-                slotCode: product.slotCode,
+                slotCode: "A1",
                 // Die Karte meldet nur die Fachnummer. Suchen, Validieren und
                 // Speichern der Auswahl übernimmt der Service.
-                onTap: () => service.selectProductBySlot(product.slotCode),
+                onTap: () => service.selectProductBySlot(product.id),
               );
             },
           ),
@@ -388,15 +389,14 @@ class _ControlPanel extends StatelessWidget {
                   // markiert genau eine aktuell gewählte Fachnummer.
                   final selected = state.selectedProductId == product.id;
                   return OutlinedButton(
-                    onPressed: () =>
-                        service.selectProductBySlot(product.slotCode),
+                    onPressed: () => service.selectProductBySlot(product.id),
                     style: OutlinedButton.styleFrom(
                       padding: EdgeInsets.zero,
                       backgroundColor: selected
                           ? Theme.of(context).colorScheme.primaryContainer
                           : null,
                     ),
-                    child: Text(product.slotCode),
+                    child: Text(product.id.toString()),
                   );
                 }).toList(),
               ),

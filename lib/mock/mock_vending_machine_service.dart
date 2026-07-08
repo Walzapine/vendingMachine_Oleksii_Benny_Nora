@@ -80,11 +80,11 @@ class MockVendingMachineService extends VendingMachineService {
   /// Die echte Implementierung sollte unbekannte Fachnummern kontrolliert
   /// behandeln; `firstWhere` reicht hier für die festen Mockdaten aus.
   @override
-  void selectProductBySlot(String slotCode) {
-    final product = _products.firstWhere((item) => item.slotCode == slotCode);
-    _selectedProductId = product.id;
-    _statusMessage = '${product.name} ausgewählt.';
-    notifyListeners();
+  void selectProductBySlot(int productID) {
+    // final product = _products.firstWhere((item) => item.id == productID);
+    // _selectedProductId = product.id;
+    // _statusMessage = '${product.name} ausgewählt.';
+    // notifyListeners();
   }
 
   /// Führt einen Kaufversuch für das aktuell ausgewählte Produkt aus.
