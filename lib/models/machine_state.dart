@@ -29,8 +29,8 @@ class MachineState {
 
   /// ID des ausgewählten Produkts oder `null`, wenn nichts gewählt wurde.
   ///
-  /// Es wird die stabile Produkt-ID und nicht der Produktname gespeichert.
-  final String? selectedProductId;
+  /// Entspricht [Product.id] (int).
+  final int? selectedProductId;
 
   /// Kurzer Text für die Statuszeile, beispielsweise eine Auswahlbestätigung.
   final String statusMessage;
