@@ -49,7 +49,7 @@ class ProductCard extends StatelessWidget {
                 // vorläufige Emoji. Spätere Produktbilder passen an diese Stelle.
                 child: Center(
                   child: Text(
-                    "Asset für product ${product.name}",
+                    product.emoji,
                     style: const TextStyle(fontSize: 36),
                   ),
                 ),
