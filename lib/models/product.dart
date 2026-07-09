@@ -5,6 +5,8 @@ part 'product.g.dart';
 
 @freezed
 abstract class Product with _$Product {
+  const Product._();
+
   const factory Product({
     required int id,
     required String name,
@@ -15,4 +17,7 @@ abstract class Product with _$Product {
 
   factory Product.fromJson(Map<String, dynamic> json) =>
       _$ProductFromJson(json);
+
+  String get formattedPrice =>
+      '${price.toStringAsFixed(2).replaceAll('.', ',')} €';
 }

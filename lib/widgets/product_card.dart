@@ -58,7 +58,7 @@ class ProductCard extends StatelessWidget {
               Text(
                 // Preis und Ausverkauft-Hinweis teilen denselben festen Bereich,
                 // damit alle Karten gleich hoch bleiben.
-                isAvailable ? product.price.toString() : 'Ausverkauft',
+                isAvailable ? product.formattedPrice : 'Ausverkauft',
                 style: TextStyle(
                   color: isAvailable ? null : Colors.red,
                   fontWeight: FontWeight.bold,
