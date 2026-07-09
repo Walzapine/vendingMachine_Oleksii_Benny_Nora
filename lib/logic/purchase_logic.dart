@@ -95,12 +95,16 @@ class PurchaseLogic {
     }
 
     final product = products[index];
-    // TODO(Team): product.price ist aktuell ein double (Cent-Wert als
-    // Kommazahl), nicht mehr ein int wie priceInCents vorher. .toInt() rundet
-    // ab und funktioniert nur, solange nie ein krummer Wert wie 1.99
-    // reinkommt. Muss noch im Team geklärt werden (siehe Absprache mit
-    // DB-Kollege), bewusst noch nicht verändert.
-    final productPriceInCents = product.price.toInt();
+    // Product.price ist ein double (Euro-Betrag, z. B. 1.8 für 1,80 €), keine
+    // ganze Centzahl. Wichtig: NICHT einfach .toInt() verwenden - das würde
+    // nur abschneiden, nicht runden. Da Fließkommazahlen intern minimal
+    // ungenau gespeichert werden (1.8 kann z. B. als 1.7999999999999998
+    // vorliegen), würde .toInt() daraus fälschlich 179 statt 180 machen.
+    // (product.price * 100).round() rundet dagegen korrekt auf den nächsten
+    // ganzen Centbetrag. Das behebt den akuten Bug, ändert aber nichts daran,
+    // dass Geld grundsätzlich besser als Cent-int in der DB gespeichert
+    // werden sollte - das bleibt ein offener Punkt fürs Team.
+    final productPriceInCents = (product.price * 100).round();
 
     // Schritt 3: Bestandsprüfung. `stock` wird nie negativ, aber `<= 0` ist
     // trotzdem robuster als `== 0`, falls doch einmal ein fehlerhafter Wert
