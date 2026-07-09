@@ -37,7 +37,11 @@ class ProductScreen extends StatelessWidget {
               fit: BoxFit.contain,
               child: SizedBox(
                 width: 940,
-                height: 650,
+                // 700 gab zusammen mit dem geänderten childAspectRatio zu
+                // viel Puffer -> großer Leerraum vor dem Ausgabefach. 630
+                // lässt noch etwas Sicherheitsabstand, ohne unnötig leer zu
+                // wirken.
+                height: 630,
                 // AnimatedBuilder hört auf ChangeNotifier-Ereignisse des
                 // Services. Nach notifyListeners() wird nur dieser Teil der UI
                 // mit dem aktuellen MachineState neu gebaut.
@@ -159,13 +163,18 @@ class _ProductArea extends StatelessWidget {
               crossAxisCount: 4,
               crossAxisSpacing: 8,
               mainAxisSpacing: 8,
-              childAspectRatio: 1.08,
+              // War vorher 1.08 (fast quadratisch) - bei 3 Reihen reichte der
+              // verfügbare Platz rechnerisch nur knapp, sodass die unterste
+              // Reihe teilweise abgeschnitten wurde. 1.3 macht jede Karte
+              // flacher (breiter im Verhältnis zur Höhe) und schafft damit
+              // spürbaren Puffer, unabhängig von kleinen Rundungsfehlern.
+              childAspectRatio: 1.3,
             ),
             itemBuilder: (context, index) {
               final product = state.products[index];
               return ProductCard(
                 product: product,
-                slotCode: "A1",
+                slotCode: product.id.toString(),
                 // Die Karte meldet nur die Fachnummer. Suchen, Validieren und
                 // Speichern der Auswahl übernimmt der Service.
                 onTap: () => service.selectProduct(product.id),
@@ -355,7 +364,10 @@ class _ControlPanel extends StatelessWidget {
             const Text('Geld einwerfen'),
             const SizedBox(height: 6),
             SizedBox(
-              height: 72,
+              // War 72 - reichte rechnerisch nicht ganz für 2 Zeilen mit
+              // 5 Münzsorten (3+2 pro Zeile), sodass der untere Rand der
+              // Buttons hauchdünn abgeschnitten wurde.
+              height: 82,
               child: GridView.count(
                 physics: const NeverScrollableScrollPhysics(),
                 crossAxisCount: 3,
@@ -377,7 +389,10 @@ class _ControlPanel extends StatelessWidget {
             const Text('Produktauswahl'),
             const SizedBox(height: 6),
             SizedBox(
-              height: 120,
+              // War 120 - reichte rechnerisch nicht ganz für 3 Zeilen mit
+              // 12 Produkten (4 pro Zeile), gleicher Grund wie beim
+              // Münzraster oben.
+              height: 132,
               child: GridView.count(
                 physics: const NeverScrollableScrollPhysics(),
                 crossAxisCount: 4,
