@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:snackautomat/models/machine_state.dart';
 import '../services/vending_machine_service.dart';
 import '../widgets/product_card.dart';
+import '../screens/admin_screen.dart';
 
 /// Hauptscreen für den normalen Kundenbetrieb des Snackautomaten.
 ///
@@ -93,19 +94,20 @@ class _Machine extends StatelessWidget {
                   ),
                 ),
                 const Spacer(),
-                IconButton(
-                  // Der Adminbereich ist absichtlich noch nicht implementiert.
-                  // Das Symbol bleibt als sichtbarer Platzhalter erhalten.
+               IconButton(
                   onPressed: () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Der Adminbereich ist noch in Arbeit.'),
+                    Navigator.push(
+                    context,
+                      MaterialPageRoute(
+                        builder: (context) => AdminScreen(
+                        vendingService: service,
+                        ),
                       ),
                     );
                   },
                   tooltip: 'Adminbereich',
                   color: Theme.of(context).colorScheme.onPrimary,
-                  icon: const Icon(Icons.admin_panel_settings_outlined),
+                  icon:  const Icon(Icons.admin_panel_settings_outlined),
                 ),
               ],
             ),
