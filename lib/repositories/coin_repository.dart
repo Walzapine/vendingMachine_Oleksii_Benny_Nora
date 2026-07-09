@@ -1,5 +1,5 @@
 import 'package:sqflite/sqflite.dart';
-import '../models/Coin.dart';
+import '../models/coin.dart';
 import '../database/database_helper.dart';
 import '../database/constants.dart';
 
@@ -41,7 +41,7 @@ class CoinRepository {
     final db = await _databaseHelper.database;
     await db.update(
       DatabaseConstants.tableCoins,
-      Coin.toJson(),
+      coin.toJson(),
       where: '${DatabaseConstants.columnCoinId} = ?',
       whereArgs: [coin.id],
     );
