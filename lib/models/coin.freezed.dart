@@ -15,7 +15,13 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$Coin {
 
- int get id; String get currency; double get value; int get quantity;
+ int get id; String get currency;// War vorher `double value` (Euro-Betrag, z. B. 2.0). Jetzt `int` in
+// ganzen Cent - gleicher Grund wie bei Product.priceInCents
+// (Rundungsfehler bei Geldbeträgen grundsätzlich ausschließen).
+//
+// @JsonKey(name: 'value') hält die DB-Spalte weiterhin 'value' (siehe
+// coins_table.dart), obwohl das Dart-Feld jetzt `valueInCents` heißt.
+@JsonKey(name: 'value') int get valueInCents; int get quantity;
 /// Create a copy of Coin
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -28,16 +34,16 @@ $CoinCopyWith<Coin> get copyWith => _$CoinCopyWithImpl<Coin>(this as Coin, _$ide
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is Coin&&(identical(other.id, id) || other.id == id)&&(identical(other.currency, currency) || other.currency == currency)&&(identical(other.value, value) || other.value == value)&&(identical(other.quantity, quantity) || other.quantity == quantity));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is Coin&&(identical(other.id, id) || other.id == id)&&(identical(other.currency, currency) || other.currency == currency)&&(identical(other.valueInCents, valueInCents) || other.valueInCents == valueInCents)&&(identical(other.quantity, quantity) || other.quantity == quantity));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,currency,value,quantity);
+int get hashCode => Object.hash(runtimeType,id,currency,valueInCents,quantity);
 
 @override
 String toString() {
-  return 'Coin(id: $id, currency: $currency, value: $value, quantity: $quantity)';
+  return 'Coin(id: $id, currency: $currency, valueInCents: $valueInCents, quantity: $quantity)';
 }
 
 
@@ -48,7 +54,7 @@ abstract mixin class $CoinCopyWith<$Res>  {
   factory $CoinCopyWith(Coin value, $Res Function(Coin) _then) = _$CoinCopyWithImpl;
 @useResult
 $Res call({
- int id, String currency, double value, int quantity
+ int id, String currency,@JsonKey(name: 'value') int valueInCents, int quantity
 });
 
 
@@ -65,12 +71,12 @@ class _$CoinCopyWithImpl<$Res>
 
 /// Create a copy of Coin
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? currency = null,Object? value = null,Object? quantity = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? currency = null,Object? valueInCents = null,Object? quantity = null,}) {
   return _then(_self.copyWith(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as int,currency: null == currency ? _self.currency : currency // ignore: cast_nullable_to_non_nullable
-as String,value: null == value ? _self.value : value // ignore: cast_nullable_to_non_nullable
-as double,quantity: null == quantity ? _self.quantity : quantity // ignore: cast_nullable_to_non_nullable
+as String,valueInCents: null == valueInCents ? _self.valueInCents : valueInCents // ignore: cast_nullable_to_non_nullable
+as int,quantity: null == quantity ? _self.quantity : quantity // ignore: cast_nullable_to_non_nullable
 as int,
   ));
 }
@@ -156,10 +162,10 @@ return $default(_that);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( int id,  String currency,  double value,  int quantity)?  $default,{required TResult orElse(),}) {final _that = this;
+@optionalTypeArgs TResult maybeWhen<TResult extends Object?>(TResult Function( int id,  String currency, @JsonKey(name: 'value')  int valueInCents,  int quantity)?  $default,{required TResult orElse(),}) {final _that = this;
 switch (_that) {
 case _Coin() when $default != null:
-return $default(_that.id,_that.currency,_that.value,_that.quantity);case _:
+return $default(_that.id,_that.currency,_that.valueInCents,_that.quantity);case _:
   return orElse();
 
 }
@@ -177,10 +183,10 @@ return $default(_that.id,_that.currency,_that.value,_that.quantity);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( int id,  String currency,  double value,  int quantity)  $default,) {final _that = this;
+@optionalTypeArgs TResult when<TResult extends Object?>(TResult Function( int id,  String currency, @JsonKey(name: 'value')  int valueInCents,  int quantity)  $default,) {final _that = this;
 switch (_that) {
 case _Coin():
-return $default(_that.id,_that.currency,_that.value,_that.quantity);case _:
+return $default(_that.id,_that.currency,_that.valueInCents,_that.quantity);case _:
   throw StateError('Unexpected subclass');
 
 }
@@ -197,10 +203,10 @@ return $default(_that.id,_that.currency,_that.value,_that.quantity);case _:
 /// }
 /// ```
 
-@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( int id,  String currency,  double value,  int quantity)?  $default,) {final _that = this;
+@optionalTypeArgs TResult? whenOrNull<TResult extends Object?>(TResult? Function( int id,  String currency, @JsonKey(name: 'value')  int valueInCents,  int quantity)?  $default,) {final _that = this;
 switch (_that) {
 case _Coin() when $default != null:
-return $default(_that.id,_that.currency,_that.value,_that.quantity);case _:
+return $default(_that.id,_that.currency,_that.valueInCents,_that.quantity);case _:
   return null;
 
 }
@@ -211,13 +217,19 @@ return $default(_that.id,_that.currency,_that.value,_that.quantity);case _:
 /// @nodoc
 @JsonSerializable()
 
-class _Coin implements Coin {
-  const _Coin({required this.id, required this.currency, required this.value, required this.quantity});
+class _Coin extends Coin {
+  const _Coin({required this.id, required this.currency, @JsonKey(name: 'value') required this.valueInCents, required this.quantity}): super._();
   factory _Coin.fromJson(Map<String, dynamic> json) => _$CoinFromJson(json);
 
 @override final  int id;
 @override final  String currency;
-@override final  double value;
+// War vorher `double value` (Euro-Betrag, z. B. 2.0). Jetzt `int` in
+// ganzen Cent - gleicher Grund wie bei Product.priceInCents
+// (Rundungsfehler bei Geldbeträgen grundsätzlich ausschließen).
+//
+// @JsonKey(name: 'value') hält die DB-Spalte weiterhin 'value' (siehe
+// coins_table.dart), obwohl das Dart-Feld jetzt `valueInCents` heißt.
+@override@JsonKey(name: 'value') final  int valueInCents;
 @override final  int quantity;
 
 /// Create a copy of Coin
@@ -233,16 +245,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _Coin&&(identical(other.id, id) || other.id == id)&&(identical(other.currency, currency) || other.currency == currency)&&(identical(other.value, value) || other.value == value)&&(identical(other.quantity, quantity) || other.quantity == quantity));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _Coin&&(identical(other.id, id) || other.id == id)&&(identical(other.currency, currency) || other.currency == currency)&&(identical(other.valueInCents, valueInCents) || other.valueInCents == valueInCents)&&(identical(other.quantity, quantity) || other.quantity == quantity));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,currency,value,quantity);
+int get hashCode => Object.hash(runtimeType,id,currency,valueInCents,quantity);
 
 @override
 String toString() {
-  return 'Coin(id: $id, currency: $currency, value: $value, quantity: $quantity)';
+  return 'Coin(id: $id, currency: $currency, valueInCents: $valueInCents, quantity: $quantity)';
 }
 
 
@@ -253,7 +265,7 @@ abstract mixin class _$CoinCopyWith<$Res> implements $CoinCopyWith<$Res> {
   factory _$CoinCopyWith(_Coin value, $Res Function(_Coin) _then) = __$CoinCopyWithImpl;
 @override @useResult
 $Res call({
- int id, String currency, double value, int quantity
+ int id, String currency,@JsonKey(name: 'value') int valueInCents, int quantity
 });
 
 
@@ -270,12 +282,12 @@ class __$CoinCopyWithImpl<$Res>
 
 /// Create a copy of Coin
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? currency = null,Object? value = null,Object? quantity = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? currency = null,Object? valueInCents = null,Object? quantity = null,}) {
   return _then(_Coin(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as int,currency: null == currency ? _self.currency : currency // ignore: cast_nullable_to_non_nullable
-as String,value: null == value ? _self.value : value // ignore: cast_nullable_to_non_nullable
-as double,quantity: null == quantity ? _self.quantity : quantity // ignore: cast_nullable_to_non_nullable
+as String,valueInCents: null == valueInCents ? _self.valueInCents : valueInCents // ignore: cast_nullable_to_non_nullable
+as int,quantity: null == quantity ? _self.quantity : quantity // ignore: cast_nullable_to_non_nullable
 as int,
   ));
 }
