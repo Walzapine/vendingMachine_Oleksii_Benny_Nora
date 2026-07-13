@@ -1,20 +1,26 @@
 import 'package:flutter/material.dart';
-import 'package:snackautomat/models/machine_state.dart';
 import '../services/vending_machine_service.dart';
-import '../widgets/product_card.dart';
-import '../screens/admin_screen.dart';
+import 'desktop_machine.dart';
+import 'mobile_machine.dart';
+
+/// Ab dieser Breite (in logischen Pixeln) wird das Desktop-Layout
+/// ([DesktopMachine]) mit der festen, skalierten Automatenfläche verwendet.
+/// Darunter (z. B. Smartphone im Hochformat) greift stattdessen das
+/// gestapelte Mobile-Layout ([MobileMachine]). Die zweite, feinere Stufe
+/// innerhalb des Mobile-Bereichs (`compactMobileBreakpoint`) steckt in
+/// `mobile_machine.dart`, weil sie nur dort relevant ist.
+const double mobileBreakpoint = 700;
 
 /// Hauptscreen für den normalen Kundenbetrieb des Snackautomaten.
 ///
-/// Der Screen ist bewusst nur für Darstellung und Benutzereingaben zuständig.
-/// Er kennt keine konkrete Datenbank und enthält keine Kaufberechnung. Alle
-/// Aktionen werden an [vendingService] delegiert.
+/// Der Screen selbst enthält keine Darstellungslogik mehr - er entscheidet
+/// nur anhand der verfügbaren Breite, welches der beiden Layouts gebaut wird:
 ///
-/// Aufbau der Ansicht:
+/// * [DesktopMachine] - feste Automatenfläche, per FittedBox skaliert
+/// * [MobileMachine] - gestapeltes, scrollbares Layout für schmale Screens
 ///
-/// * Kopfzeile mit Titel und vorbereitetem Adminsymbol,
-/// * linke Seite mit Produktraster, Ausgabefach und Status,
-/// * rechte Seite mit Guthaben, Münzen, Auswahl und Kaufaktionen.
+/// Der Screen kennt keine konkrete Datenbank und enthält keine
+/// Kaufberechnung. Alle Aktionen werden an [vendingService] delegiert.
 class ProductScreen extends StatelessWidget {
   /// Erstellt den Screen mit einer injizierten Automatenlogik.
   const ProductScreen({super.key, required this.vendingService});
@@ -28,409 +34,56 @@ class ProductScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Center(
-            // FittedBox skaliert die feste Automatenfläche proportional auf die
-            // verfügbare Fenstergröße. Dadurch bleibt die gewünschte Anordnung
-            // auf Desktop und kleineren Displays erhalten.
-            child: FittedBox(
-              fit: BoxFit.contain,
-              child: SizedBox(
-                width: 940,
-                // 700 gab zusammen mit dem geänderten childAspectRatio zu
-                // viel Puffer -> großer Leerraum vor dem Ausgabefach. 630
-                // lässt noch etwas Sicherheitsabstand, ohne unnötig leer zu
-                // wirken.
-                height: 630,
-                // AnimatedBuilder hört auf ChangeNotifier-Ereignisse des
-                // Services. Nach notifyListeners() wird nur dieser Teil der UI
-                // mit dem aktuellen MachineState neu gebaut.
-                child: AnimatedBuilder(
-                  animation: vendingService,
-                  builder: (context, _) => _Machine(
-                    state: vendingService.state,
-                    service: vendingService,
-                  ),
+        // LayoutBuilder gibt uns die tatsächlich verfügbare Breite. Damit
+        // entscheiden wir, welches der beiden Layouts gebaut wird - das ist
+        // der eigentliche "Layoutwechsel" (zusätzlich zur Skalierung, die
+        // weiterhin innerhalb des Desktop-Zweigs passiert).
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final isMobile = constraints.maxWidth < mobileBreakpoint;
+
+            if (isMobile) {
+              // Mobile: KEIN FittedBox, KEINE feste Pixelgröße. Die Bereiche
+              // ordnen sich natürlich untereinander an, die Seite scrollt bei
+              // Bedarf. Das verhindert, dass auf schmalen Bildschirmen alles
+              // nur winzig klein skaliert würde.
+              //
+              // Die tatsächliche Breite wird durchgereicht, damit
+              // MobileMachine selbst zwischen "normal" und "sehr schmal"
+              // unterscheiden und sich fein abgestuft anpassen kann (statt
+              // eines einzigen harten Schnitts bei mobileBreakpoint).
+              return AnimatedBuilder(
+                animation: vendingService,
+                builder: (context, _) => MobileMachine(
+                  state: vendingService.state,
+                  service: vendingService,
+                  width: constraints.maxWidth,
                 ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// Zusammensetzung des sichtbaren Automatenrahmens.
-///
-/// Der führende Unterstrich macht die Klasse dateiprivat. Andere Dateien sollen
-/// ausschließlich [ProductScreen] verwenden und nicht dessen interne
-/// Layoutbausteine direkt ansprechen.
-class _Machine extends StatelessWidget {
-  const _Machine({required this.state, required this.service});
-
-  /// Aktueller, unveränderlicher Zustand für die Darstellung.
-  final MachineState state;
-
-  /// Service für alle vom Benutzer ausgelösten Aktionen.
-  final VendingMachineService service;
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      // Clip verhindert, dass die farbige Kopfzeile über die abgerundeten
-      // Außenkanten der Card hinausragt.
-      clipBehavior: Clip.antiAlias,
-      child: Column(
-        children: [
-          Container(
-            height: 64,
-            color: Theme.of(context).colorScheme.primary,
-            padding: const EdgeInsets.symmetric(horizontal: 20),
-            child: Row(
-              children: [
-                Text(
-                  'SNACKAUTOMAT',
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                    color: Theme.of(context).colorScheme.onPrimary,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const Spacer(),
-               IconButton(
-                  onPressed: () {
-                    Navigator.push(
-                    context,
-                      MaterialPageRoute(
-                        builder: (context) => AdminScreen(
-                        vendingService: service,
-                        ),
-                      ),
-                    );
-                  },
-                  tooltip: 'Adminbereich',
-                  color: Theme.of(context).colorScheme.onPrimary,
-                  icon:  const Icon(Icons.admin_panel_settings_outlined),
-                ),
-              ],
-            ),
-          ),
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Expanded(
-                    // Verhältnis 3:1: Produktbereich erhält drei Viertel der
-                    // verfügbaren Breite, das Bedienfeld ein Viertel.
-                    flex: 3,
-                    child: _ProductArea(state: state, service: service),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: _ControlPanel(state: state, service: service),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// Linker Automatenbereich mit Produkten, Ausgabe und Statuszeile.
-class _ProductArea extends StatelessWidget {
-  const _ProductArea({required this.state, required this.service});
-
-  final MachineState state;
-  final VendingMachineService service;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Expanded(
-          // Die Produktreihenfolge kommt vollständig aus MachineState. Das
-          // Frontend enthält keine eigene, zweite Produktliste.
-          child: GridView.builder(
-            // Das gesamte Automatenlayout wird skaliert; deshalb soll innerhalb
-            // des Produktrasters nicht zusätzlich gescrollt werden.
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: state.products.length,
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 4,
-              crossAxisSpacing: 8,
-              mainAxisSpacing: 8,
-              // War vorher 1.08 (fast quadratisch) - bei 3 Reihen reichte der
-              // verfügbare Platz rechnerisch nur knapp, sodass die unterste
-              // Reihe teilweise abgeschnitten wurde. 1.3 macht jede Karte
-              // flacher (breiter im Verhältnis zur Höhe) und schafft damit
-              // spürbaren Puffer, unabhängig von kleinen Rundungsfehlern.
-              childAspectRatio: 1.3,
-            ),
-            itemBuilder: (context, index) {
-              final product = state.products[index];
-              return ProductCard(
-                product: product,
-                slotCode: product.id.toString(),
-                // Die Karte meldet nur die Fachnummer. Suchen, Validieren und
-                // Speichern der Auswahl übernimmt der Service.
-                onTap: () => service.selectProduct(product.id),
               );
-            },
-          ),
-        ),
-        const SizedBox(height: 10),
-        Row(
-          children: [
-            // Produkt-Fach (links): zeigt entweder den leeren Platzhalter
-            // oder, sobald ein Kauf erfolgreich war, das liegende Produkt.
-            // Ein Klick ruft service.collectProduct() auf und leert NUR
-            // dieses Fach - das Guthaben bleibt davon unberührt.
-            Expanded(
-              child: _TrayButton(
-                isFilled: state.trayHasProduct,
-                filledColor: Colors.green.shade100,
-                emptyColor: Colors.grey.shade300,
-                label: state.trayHasProduct
-                    ? '${state.dispensedProduct?.emoji ?? ''} '
-                          '${state.dispensedProduct?.name ?? ''}'
-                          ' – antippen'
-                    : 'AUSGABEFACH',
-                onTap: state.trayHasProduct
-                    ? () => service.collectProduct()
-                    : null,
-              ),
-            ),
-            const SizedBox(width: 8),
-            // Rückgeld-Fach (rechts): zeigt das aktuelle Guthaben, sobald es
-            // größer als 0 ist - egal ob frisch eingeworfen oder Rückgeld aus
-            // einem Kauf. Ein Klick ruft dieselbe returnMoney()-Logik auf wie
-            // der RÜCKGABE-Button, nur eben als Fach statt als Button.
-            Expanded(
-              child: _TrayButton(
-                isFilled: state.hasChangeToCollect,
-                filledColor: Colors.amber.shade100,
-                emptyColor: Colors.grey.shade300,
-                label: state.hasChangeToCollect
-                    ? '🪙 ${state.formattedCredit} – antippen'
-                    : 'RÜCKGELD',
-                onTap: state.hasChangeToCollect
-                    ? () => service.returnMoney()
-                    : null,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        Container(
-          // Die Statuszeile zeigt exakt die Meldung aus MachineState. Dadurch
-          // entscheidet die Logik, welcher fachliche Zustand kommuniziert wird.
-          height: 44,
-          alignment: Alignment.centerLeft,
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          color: Colors.grey.shade200,
-          child: Text(state.statusMessage),
-        ),
-      ],
-    );
-  }
-}
+            }
 
-/// Ein einzelnes, antippbares Fach (Produkt- oder Rückgeld-Fach).
-///
-/// Beide Fächer sehen gleich aus und verhalten sich gleich (gefüllt = bunt
-/// und antippbar, leer = grau und nicht antippbar), unterscheiden sich nur in
-/// Inhalt und Aktion. Deshalb dieses eine gemeinsame Widget statt Duplikat.
-class _TrayButton extends StatelessWidget {
-  const _TrayButton({
-    required this.isFilled,
-    required this.filledColor,
-    required this.emptyColor,
-    required this.label,
-    required this.onTap,
-  });
-
-  /// Ob gerade etwas im Fach liegt (Produkt bzw. abholbares Guthaben).
-  final bool isFilled;
-
-  /// Hintergrundfarbe, wenn das Fach gefüllt ist.
-  final Color filledColor;
-
-  /// Hintergrundfarbe, wenn das Fach leer ist.
-  final Color emptyColor;
-
-  /// Anzuzeigender Text.
-  final String label;
-
-  /// Aktion bei Klick. `null`, wenn das Fach leer ist - dadurch reagiert
-  /// InkWell gar nicht erst auf Taps und braucht keine eigene Prüfung.
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      height: 58,
-      child: Material(
-        color: isFilled ? filledColor : emptyColor,
-        borderRadius: BorderRadius.circular(8),
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(8),
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8),
-            child: Center(
-              child: Text(
-                label,
-                textAlign: TextAlign.center,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// Rechtes Bedienfeld für Geld, Fachauswahl und Kaufaktionen.
-///
-/// Diese Klasse übersetzt Klicks in Methodenaufrufe am Service. Sie führt keine
-/// Preis- oder Bestandsberechnungen selbst durch.
-class _ControlPanel extends StatelessWidget {
-  const _ControlPanel({required this.state, required this.service});
-
-  /// Zustand für Guthaben und ausgewählte Produkttaste.
-  final MachineState state;
-
-  /// Geschäftslogik, an die sämtliche Eingaben weitergegeben werden.
-  final VendingMachineService service;
-
-  /// Startet einen Kauf und zeigt fachliche Fehler als SnackBar an.
-  ///
-  /// Erfolgreiche Käufe benötigen keine zusätzliche SnackBar, weil der Service
-  /// die Statuszeile im [MachineState] aktualisiert. `context.mounted` schützt
-  /// davor, nach einem asynchronen Aufruf einen bereits entfernten Screen zu
-  /// verwenden.
-  Future<void> _purchase(BuildContext context) async {
-    final result = await service.purchase();
-    if (!context.mounted || result.isSuccess) return;
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(result.message)));
-  }
-
-  /// Bricht den Vorgang ab und informiert über tatsächlich zurückgegebenes Geld.
-  /// Bei einem Rückgabebetrag von null ist keine Meldung nötig.
-  void _returnMoney(BuildContext context) {
-    final cents = service.returnMoney();
-    if (cents == 0) return;
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text('$cents Cent zurückgegeben.')));
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    // Schlüssel sind die sichtbaren Beschriftungen, Werte die an das Backend
-    // übergebenen Centbeträge. Neue Münzen können hier zentral ergänzt werden.
-    const coins = {
-      '2 €': 200,
-      '1 €': 100,
-      '50 ct': 50,
-      '20 ct': 20,
-      '10 ct': 10,
-    };
-
-    return Card(
-      color: Colors.grey.shade100,
-      margin: EdgeInsets.zero,
-      child: Padding(
-        padding: const EdgeInsets.all(14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const Text('Guthaben'),
-            Text(
-              // Nur die Darstellung ist formatiert. Der Service verwaltet den
-              // zugrunde liegenden Betrag weiterhin als int in Cent.
-              state.formattedCredit,
-              style: Theme.of(context).textTheme.headlineSmall,
-            ),
-            const SizedBox(height: 16),
-            const Text('Geld einwerfen'),
-            const SizedBox(height: 6),
-            SizedBox(
-              // War 72 - reichte rechnerisch nicht ganz für 2 Zeilen mit
-              // 5 Münzsorten (3+2 pro Zeile), sodass der untere Rand der
-              // Buttons hauchdünn abgeschnitten wurde.
-              height: 82,
-              child: GridView.count(
-                physics: const NeverScrollableScrollPhysics(),
-                crossAxisCount: 3,
-                crossAxisSpacing: 5,
-                mainAxisSpacing: 5,
-                childAspectRatio: 1.8,
-                children: coins.entries.map((coin) {
-                  return OutlinedButton(
-                    // Das Frontend übergibt nur den gewählten Münzwert. Prüfung
-                    // und Addition sind Aufgabe des Services.
-                    onPressed: () => service.insertMoney(coin.value),
-                    style: OutlinedButton.styleFrom(padding: EdgeInsets.zero),
-                    child: Text(coin.key),
-                  );
-                }).toList(),
-              ),
-            ),
-            const SizedBox(height: 16),
-            const Text('Produktauswahl'),
-            const SizedBox(height: 6),
-            SizedBox(
-              // War 120 - reichte rechnerisch nicht ganz für 3 Zeilen mit
-              // 12 Produkten (4 pro Zeile), gleicher Grund wie beim
-              // Münzraster oben.
-              height: 132,
-              child: GridView.count(
-                physics: const NeverScrollableScrollPhysics(),
-                crossAxisCount: 4,
-                crossAxisSpacing: 5,
-                mainAxisSpacing: 5,
-                childAspectRatio: 1.2,
-                children: state.products.map((product) {
-                  // Der Vergleich erfolgt über die stabile technische ID und
-                  // markiert genau eine aktuell gewählte Fachnummer.
-                  final selected = state.selectedProductId == product.id;
-                  return OutlinedButton(
-                    onPressed: () => service.selectProduct(product.id),
-                    style: OutlinedButton.styleFrom(
-                      padding: EdgeInsets.zero,
-                      backgroundColor: selected
-                          ? Theme.of(context).colorScheme.primaryContainer
-                          : null,
+            // Desktop: wie bisher - feste Automatenfläche, die per FittedBox
+            // proportional auf die verfügbare Fenstergröße skaliert wird.
+            return Padding(
+              padding: const EdgeInsets.all(20),
+              child: Center(
+                child: FittedBox(
+                  fit: BoxFit.contain,
+                  child: SizedBox(
+                    width: 940,
+                    height: 630,
+                    child: AnimatedBuilder(
+                      animation: vendingService,
+                      builder: (context, _) => DesktopMachine(
+                        state: vendingService.state,
+                        service: vendingService,
+                      ),
                     ),
-                    child: Text(product.id.toString()),
-                  );
-                }).toList(),
+                  ),
+                ),
               ),
-            ),
-            const Spacer(),
-            FilledButton(
-              // Der asynchrone Ablauf bleibt in _purchase gebündelt, damit der
-              // Widgetbaum übersichtlich bleibt.
-              onPressed: () => _purchase(context),
-              child: const Text('KAUFEN'),
-            ),
-            const SizedBox(height: 8),
-            OutlinedButton(
-              onPressed: () => _returnMoney(context),
-              child: const Text('RÜCKGABE'),
-            ),
-          ],
+            );
+          },
         ),
       ),
     );
