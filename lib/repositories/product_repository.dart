@@ -1,4 +1,3 @@
-import 'package:sqflite/sqflite.dart';
 import '../models/product.dart';
 import '../database/database_helper.dart';
 import '../database/constants.dart';
