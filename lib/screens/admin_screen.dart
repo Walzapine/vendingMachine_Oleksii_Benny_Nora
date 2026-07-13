@@ -47,11 +47,16 @@ class _AdminPanel extends StatelessWidget {
           child: Padding(
             padding: const EdgeInsets.all(12),
             child: Row(
+              // Verhältnis 1:2:2:2 statt 1:2:2:1 - "Aktion" braucht mehr
+              // relativen Platz als die anderen, weil hier zwei Buttons
+              // nebeneinander stehen (siehe _CoinRow). Bei 1:2:2:1 bekam
+              // diese Spalte auf schmalen Bildschirmen (Handy) weniger
+              // Breite als die beiden Buttons zusammen brauchen -> Overflow.
               children: const [
                 Expanded(flex: 1, child: Text('ID')),
                 Expanded(flex: 2, child: Text('Wert')),
                 Expanded(flex: 2, child: Text('Bestand')),
-                Expanded(flex: 1, child: Text('Aktion')),
+                Expanded(flex: 2, child: Text('Aktion')),
               ],
             ),
           ),
@@ -109,16 +114,18 @@ class _CoinRow extends StatelessWidget {
               flex: 2,
               child: Text(coin.quantity.toString()),
             ),
-            // +/- Buttons
+            // +/- Buttons - flex erhöht (siehe Kommentar in der Kopfzeile
+            // oben) und Buttons leicht verkleinert (32 statt 36), damit auch
+            // auf schmalen Bildschirmen genug Platz für beide Buttons bleibt.
             Expanded(
-              flex: 1,
+              flex: 2,
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
                   // "-" Button
                   SizedBox(
-                    width: 36,
-                    height: 36,
+                    width: 32,
+                    height: 32,
                     child: OutlinedButton(
                       onPressed: () => service.decreaseCoinQuantity(coin.id),
                       style: OutlinedButton.styleFrom(padding: EdgeInsets.zero),
@@ -127,8 +134,8 @@ class _CoinRow extends StatelessWidget {
                   ),
                   // "+" Button
                   SizedBox(
-                    width: 36,
-                    height: 36,
+                    width: 32,
+                    height: 32,
                     child: OutlinedButton(
                       onPressed: () => service.increaseCoinQuantity(coin.id),
                       style: OutlinedButton.styleFrom(padding: EdgeInsets.zero),
