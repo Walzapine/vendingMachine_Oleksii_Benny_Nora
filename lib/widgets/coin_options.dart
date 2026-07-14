@@ -11,4 +11,5 @@ const coinButtons = {
   '50 ct': 50,
   '20 ct': 20,
   '10 ct': 10,
+  '5 ct': 5,
 };
