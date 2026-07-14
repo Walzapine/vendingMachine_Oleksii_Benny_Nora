@@ -172,15 +172,11 @@ class PurchaseAttempt {
   /// dieser Konstruktor ausschließlich für den Erfolgsfall gedacht ist – er
   /// muss deshalb nicht als Parameter übergeben werden.
   const PurchaseAttempt.success({
-    required Product updatedProduct,
-    required int productIndex,
-    required int changeInCents,
-    required String message,
-  }) : status = PurchaseStatus.success,
-       updatedProduct = updatedProduct,
-       productIndex = productIndex,
-       changeInCents = changeInCents,
-       message = message;
+    required Product this.updatedProduct,
+    required int this.productIndex,
+    required this.changeInCents,
+    required this.message,
+  }) : status = PurchaseStatus.success;
 
   /// Maschinenlesbarer Ausgang der Prüfung (Erfolg oder welcher Fehlerfall).
   final PurchaseStatus status;
