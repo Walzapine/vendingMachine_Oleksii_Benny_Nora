@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
-
-import 'mock/mock_vending_machine_service.dart';
+import 'database/database_helper.dart';
+import 'repositories/product_repository.dart';
+import 'repositories/coin_repository.dart';
+import 'services/vending_machine_service_impl.dart';
 import 'screens/product_screen.dart';
 import 'services/vending_machine_service.dart';
 
@@ -11,8 +13,22 @@ import 'services/vending_machine_service.dart';
 /// muss nur diese konkrete Instanz ausgetauscht werden. Das Frontend arbeitet
 /// ausschließlich mit dem abstrakten Vertrag [VendingMachineService] und muss
 /// deshalb bei einem Backendwechsel nicht umgebaut werden.
-void main() {
-  final service = MockVendingMachineService();
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized(); // ← Wichtig für async!
+
+  // Initialisiere Database, Repositories, Service
+  final databaseHelper = DatabaseHelper();
+  final productRepository = ProductRepository(databaseHelper);
+  final coinRepository = CoinRepository(databaseHelper);
+
+  final service = VendingMachineServiceImpl(
+    productRepository: productRepository,
+    coinRepository: coinRepository,
+    databaseHelper: databaseHelper,
+  );
+
+  // ← Lade Daten aus DB!
+  await service.initialize();
   runApp(SnackautomatApp(vendingService: service));
 }
 

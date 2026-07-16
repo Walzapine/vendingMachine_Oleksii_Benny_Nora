@@ -7,6 +7,7 @@ import 'constants.dart';
 import 'tables/product_table.dart';
 import 'tables/coins_table.dart';
 
+/// DatabaseHelper macht DB beim App-Start sichtbar
 class DatabaseHelper {
   static final DatabaseHelper _instance = DatabaseHelper._internal();
 
@@ -18,9 +19,9 @@ class DatabaseHelper {
 
   DatabaseHelper._internal();
 
-  Future<Database> get database async {
+  Future<Database?> get database async {
     _database ??= await _initDatabase();
-    return _database!;
+    return _database;
   }
 
   Future<Database> _initDatabase() async {

@@ -11,24 +11,24 @@ class CoinRepository {
 
   Future<List<Coin>> getAllCoins() async {
     final db = await _databaseHelper.database;
-    final result = await db.query(DatabaseConstants.tableCoins);
-    return result.map((json) => Coin.fromJson(json)).toList();
+    final result = await db?.query(DatabaseConstants.tableCoins);
+    return result!.map((json) => Coin.fromJson(json)).toList();
   }
 
   Future<Coin?> getCoinById(int id) async {
     final db = await _databaseHelper.database;
-    final result = await db.query(
+    final result = await db?.query(
       DatabaseConstants.tableCoins,
       where: '${DatabaseConstants.columnCoinId} = ?',
       whereArgs: [id],
     );
-    if (result.isEmpty) return null;
+    if (result!.isEmpty) return null;
     return Coin.fromJson(result.first);
   }
 
   Future<void> updateCoinQuantity(int coinId, int newQuantity) async {
     final db = await _databaseHelper.database;
-    await db.update(
+    await db?.update(
       DatabaseConstants.tableCoins,
       {DatabaseConstants.columnCoinQuantity: newQuantity},
       where: '${DatabaseConstants.columnCoinId} = ?',
@@ -38,7 +38,7 @@ class CoinRepository {
 
   Future<void> updateCoin(Coin coin) async {
     final db = await _databaseHelper.database;
-    await db.update(
+    await db?.update(
       DatabaseConstants.tableCoins,
       coin.toJson(),
       where: '${DatabaseConstants.columnCoinId} = ?',
@@ -48,7 +48,7 @@ class CoinRepository {
 
   Future<void> deleteCoin(int coinId) async {
     final db = await _databaseHelper.database;
-    await db.delete(
+    await db?.delete(
       DatabaseConstants.tableCoins,
       where: '${DatabaseConstants.columnCoinId} = ?',
       whereArgs: [coinId],
