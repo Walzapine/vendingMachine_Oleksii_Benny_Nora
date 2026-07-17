@@ -26,4 +26,6 @@ abstract class Coin with _$Coin {
   /// z. B. `200` -> `2,00 €`.
   String get formattedValue =>
       '${(valueInCents / 100).toStringAsFixed(2).replaceAll('.', ',')} €';
+
+  get value => null;
 }

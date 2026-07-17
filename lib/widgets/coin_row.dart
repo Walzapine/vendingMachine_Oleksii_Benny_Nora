@@ -2,12 +2,6 @@ import 'package:flutter/material.dart';
 import '../models/coin.dart';
 import '../services/vending_machine_service.dart';
 
-/// Einzelne Münz-Reihe mit ID, Wert, Bestand, +/- Buttons.
-///
-/// Wird ausschließlich vom AdminScreen verwendet, ist aber eigenständig genug
-/// (kein Zugriff auf umgebenden Zustand außer den übergebenen Parametern),
-/// um in einer eigenen Datei zu stehen statt den AdminScreen unnötig lang zu
-/// machen.
 class CoinRow extends StatelessWidget {
   const CoinRow({super.key, required this.coin, required this.service});
 
@@ -24,13 +18,11 @@ class CoinRow extends StatelessWidget {
           children: [
             // ID
             Expanded(flex: 1, child: Text(coin.id.toString())),
-            // Wert (in Euro formatiert)
-            Expanded(flex: 2, child: Text('${coin.valueInCents.toStringAsFixed(2)}€')),
-            // Bestand (Anzahl)
+            // Wert (formatiert)
+            Expanded(flex: 2, child: Text(coin.formattedValue)),
+            // Bestand
             Expanded(flex: 2, child: Text(coin.quantity.toString())),
-            // +/- Buttons - flex 2 statt 1, damit auf schmalen Bildschirmen
-            // genug Platz für beide Buttons zusammen bleibt (siehe
-            // Kommentar in der Kopfzeile in admin_screen.dart).
+            // +/- Buttons
             Expanded(
               flex: 2,
               child: Row(

@@ -3,7 +3,6 @@ import '../models/machine_state.dart';
 import '../models/product.dart';
 import '../models/purchase_result.dart';
 import '../logic/purchase_logic.dart';
-import '../logic/coin_logic.dart';
 import '../repositories/product_repository.dart';
 import '../repositories/coin_repository.dart';
 import '../database/database_helper.dart';
@@ -140,42 +139,82 @@ class VendingMachineServiceImpl extends VendingMachineService {
   /// Erhöht Münz-Bestand und speichert in DB.
   @override
   void increaseCoinQuantity(int coinId) {
-    final adjustment = CoinLogic.increase(coins: _coins, coinId: coinId);
-    if (adjustment.isSuccess) {
-      _coins[adjustment.coinIndex] = adjustment.updatedCoin;
+    print('🔵 DEBUG: increaseCoinQuantity($coinId) aufgerufen');
 
-      // 🔴 WICHTIG: Speichere in DB!
-      productRepository.database.then((db) {
-        db.update(
-          'coins',
-          {'quantity': adjustment.updatedCoin.quantity},
-          where: 'id = ?',
-          whereArgs: [coinId],
-        );
+    try {
+      // Finde die Münze
+      final coinIndex = _coins.indexWhere((c) => c.id == coinId);
+      if (coinIndex == -1) {
+        print('❌ Münze nicht gefunden: $coinId');
+        return;
+      }
+
+      final oldCoin = _coins[coinIndex];
+      print('🔵 DEBUG: Old coin: $oldCoin');
+
+      // Erhöhe um 1
+      final newCoin = oldCoin.copyWith(quantity: oldCoin.quantity + 1);
+
+      // Update in RAM
+      _coins[coinIndex] = newCoin;
+      print('✅ DEBUG: New coin in RAM: $newCoin');
+
+      // Speichere in DB (asynchron, kein await)
+      coinRepository.updateCoinQuantity(coinId, newCoin.quantity).catchError((
+        e,
+      ) {
+        print('❌ DB Error: $e');
       });
 
+      // Benachrichtige UI!
       notifyListeners();
+      print('✅ DEBUG: notifyListeners() aufgerufen');
+    } catch (e) {
+      print('❌ Exception in increaseCoinQuantity: $e');
     }
   }
 
   /// Vermindert Münz-Bestand und speichert in DB.
   @override
   void decreaseCoinQuantity(int coinId) {
-    final adjustment = CoinLogic.decrease(coins: _coins, coinId: coinId);
-    if (adjustment.isSuccess) {
-      _coins[adjustment.coinIndex] = adjustment.updatedCoin;
+    print('🔵 DEBUG: decreaseCoinQuantity($coinId) aufgerufen');
 
-      // 🔴 WICHTIG: Speichere in DB!
-      productRepository.database.then((db) {
-        db.update(
-          'coins',
-          {'quantity': adjustment.updatedCoin.quantity},
-          where: 'id = ?',
-          whereArgs: [coinId],
-        );
+    try {
+      // Finde die Münze
+      final coinIndex = _coins.indexWhere((c) => c.id == coinId);
+      if (coinIndex == -1) {
+        print('❌ Münze nicht gefunden: $coinId');
+        return;
+      }
+
+      final oldCoin = _coins[coinIndex];
+      print('🔵 DEBUG: Old coin: $oldCoin');
+
+      // Prüfe ob Bestand > 0
+      if (oldCoin.quantity <= 0) {
+        print('❌ Bestand ist 0, kann nicht verringern!');
+        return;
+      }
+
+      // Vermindere um 1
+      final newCoin = oldCoin.copyWith(quantity: oldCoin.quantity - 1);
+
+      // Update in RAM
+      _coins[coinIndex] = newCoin;
+      print('✅ DEBUG: New coin in RAM: $newCoin');
+
+      // Speichere in DB (asynchron, kein await)
+      coinRepository.updateCoinQuantity(coinId, newCoin.quantity).catchError((
+        e,
+      ) {
+        print('❌ DB Error: $e');
       });
 
+      // Benachrichtige UI!
       notifyListeners();
+      print('✅ DEBUG: notifyListeners() aufgerufen');
+    } catch (e) {
+      print('❌ Exception in decreaseCoinQuantity: $e');
     }
   }
 }

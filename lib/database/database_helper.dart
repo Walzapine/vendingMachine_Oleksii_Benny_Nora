@@ -31,6 +31,10 @@ class DatabaseHelper {
     final databasesPath = await getDatabasesPath();
     final path = join(databasesPath, DatabaseConstants.databaseName);
 
+    // 🔴 WICHTIG: Zeige den Pfad!
+    log('📁 Datenbank-Pfad: $path');
+    print('📁 Datenbank-Pfad: $path'); // Auch in Console sichtbar
+
     return openDatabase(
       path,
       version: DatabaseConstants.databaseVersion,

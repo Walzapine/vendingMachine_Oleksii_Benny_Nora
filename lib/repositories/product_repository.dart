@@ -9,7 +9,7 @@ class ProductRepository {
 
   ProductRepository(this._databaseHelper);
 
-  get database => null;
+  Null get database => null;
 
   Future<List<Product>> getAllProducts() async {
     final db = await _databaseHelper.database;
