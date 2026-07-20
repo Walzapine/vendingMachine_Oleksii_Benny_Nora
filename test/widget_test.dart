@@ -23,16 +23,38 @@ void main() {
     expect(find.text('Ausverkauft'), findsOneWidget);
   });
 
-  testWidgets('Adminsymbol zeigt nur einen Arbeitshinweis', (tester) async {
+  testWidgets('Adminsymbol navigiert zum Admin-Bereich', (tester) async {
     final service = MockVendingMachineService();
     await tester.pumpWidget(SnackautomatApp(vendingService: service));
 
     // Der Tooltip ist stabiler als die Suche nach einem bestimmten Icon und
     // verbessert gleichzeitig die Barrierefreiheit der echten Oberfläche.
     await tester.tap(find.byTooltip('Adminbereich'));
-    await tester.pump();
+    // pumpAndSettle statt pump: Navigator.push löst eine Übergangsanimation
+    // aus, die erst vollständig abgeschlossen sein muss, bevor der neue
+    // Screen (mit seinem eigenen AppBar-Titel) im Widget-Baum zu finden ist.
+    await tester.pumpAndSettle();
 
-    // Bis zur späteren Admin-Implementierung darf nur dieser Hinweis erscheinen.
-    expect(find.text('Der Adminbereich ist noch in Arbeit.'), findsOneWidget);
+    // Der AdminScreen hat den AppBar-Titel "Admin-Bereich" - taucht er auf,
+    // hat die Navigation tatsächlich stattgefunden (statt nur eine SnackBar
+    // zu zeigen, wie es früher der Fall war).
+    expect(find.text('Admin-Bereich'), findsOneWidget);
+  });
+
+  testWidgets('Zurück-Button im Admin-Bereich führt zum Verkaufsbildschirm zurück', (
+    tester,
+  ) async {
+    final service = MockVendingMachineService();
+    await tester.pumpWidget(SnackautomatApp(vendingService: service));
+
+    await tester.tap(find.byTooltip('Adminbereich'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Zurück zum Verkauf'));
+    await tester.pumpAndSettle();
+
+    // Nach dem Zurücknavigieren sollte wieder der Verkaufsbildschirm sichtbar
+    // sein - ein einfacher Rundweg-Test (hin und zurück).
+    expect(find.text('SNACKAUTOMAT'), findsOneWidget);
   });
 }
